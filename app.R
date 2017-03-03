@@ -134,43 +134,35 @@ server <- function(input, output, session) {
         data
     })
     
-    output$check <- renderPrint({
-        if ((length(input$axis) == 0) | (exists("input$file1"))) {
-            'true'
-        } else {
-            'false'
-        }
-    })
-    
-    output$plotnone <- renderPlot({
-        #Data Type String
-        if (input$information == "X") {
-            datatype <- "Position"
-        } else if (input$information == "V") {
-            datatype <- "Velocity"
-        } else if (input$information == "Q") {
-            datatype <- "Quaternion"
-        } else if (input$information == "A") {
-            datatype <- "Acceleration"
-        } else {
-            datatype <- "Gyro"    
-        }
-        
-        #Plot none
-        ggplot(data = data.frame()) + 
-            geom_line()  + 
-            theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 20),
-                  axis.title.x = element_text(face = "bold", size = 14),
-                  axis.title.y = element_text(face = "bold", size = 14),
-                  legend.position = "right",
-                  legend.title = element_text(face = "bold", size = 12),
-                  legend.text = element_text(size = 10)) + 
-            labs(title=input$title,
-                 y = datatype,
-                 x = "Index") +
-            ylim(-1,1) + 
-            xlim(0,1000)  
-    })
+#    output$plotnone <- renderPlot({
+#        #Data Type String
+#        if (input$information == "X") {
+#            datatype <- "Position"
+#        } else if (input$information == "V") {
+#            datatype <- "Velocity"
+#        } else if (input$information == "Q") {
+#            datatype <- "Quaternion"
+#        } else if (input$information == "A") {
+#            datatype <- "Acceleration"
+#        } else {
+#            datatype <- "Gyro"    
+#        }
+#        
+#        #Plot none
+#        ggplot(data = data.frame()) + 
+#            geom_line()  + 
+#            theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 20),
+#                  axis.title.x = element_text(face = "bold", size = 14),
+#                  axis.title.y = element_text(face = "bold", size = 14),
+#                  legend.position = "right",
+#                  legend.title = element_text(face = "bold", size = 12),
+#                  legend.text = element_text(size = 10)) + 
+#            labs(title=input$title,
+#                 y = datatype,
+#                 x = "Index") +
+#            ylim(-1,1) + 
+#            xlim(0,1000)  
+#    })
     
     output$plot <- renderPlot({
         
