@@ -72,24 +72,25 @@ axes <- c("X" = "x",
 
 tenPlace <- function(x) {
     #For any number.number*10^digits, returns digits
+    options(scipen=999)
     if (!is.numeric(x)) return("Not a Number")
-    str <- as.character(x)
+    str <- as.character(abs(x))
     if (substring(str,1,1) == "0") {
         str <- gsub('.*\\.','',str)
-        -(nchar(gsub('[1-9]*','',str)) + 1)
+        -(nchar(gsub('[1-9].*','',str)) + 1)
     } else {
         nchar(gsub('\\..*','',str)) - 1
     }
 }
 
 tenPercRound <- function(x,type) {
-    maxVal <- max(x)
-    minVal <- min(x)
+    maxVal <- max(x,na.rm = TRUE)
+    minVal <- min(x,na.rm = TRUE)
     rangeTenPerc <- (maxVal - minVal)*0.1
     if (type == "min") {
-        floor((minVal-rangeTenPerc)/10^(tenPlace(rangeTenPerc)))*10^(tenPlace(rangeTenPerc))
+        floor(minVal/10^(tenPlace(minVal)-2))*10^(tenPlace(minVal)-2)
     } else if (type == "max") {
-        ceiling((maxVal+rangeTenPerc)/10^(tenPlace(rangeTenPerc)))*10^(tenPlace(rangeTenPerc))
+        ceiling(maxVal/10^(tenPlace(maxVal)-2))*10^(tenPlace(maxVal)-2)
     } else {
         return("Choose 'min' or 'max'")
     }
@@ -107,15 +108,21 @@ ui <- fluidPage(
             selectInput("bodypart", "Body Part:", bodyparts),
             selectInput("information", "Type:", types),
             selectInput("axis", "Axis:", axes, multiple = TRUE, selected = "m"),
-            sliderInput("yaxis", "Plot Scale:", min = -10, max = 10, value = c(-10,10), 
-                        step = 0.1, sep = ""),
+            sliderInput("yaxis", "Plot Scale:", min = -1, max = 1, value = c(-1,1), 
+                        step = 0.001, sep = "",ticks = FALSE),
             sliderInput("xaxis", "Index Scale:", min = 1, max = 10000, value = c(1,10000), 
-                        step = 1, sep = "")
+                        step = 1, sep = "", ticks = FALSE)
         ),
         
         mainPanel(
-            plotOutput("plot")
-            
+            conditionalPanel(
+                condition = "output.fileUploaded",
+                plotOutput("plot")
+            ),
+            conditionalPanel(
+                condition = "!output.fileUploaded",
+                plotOutput("plotnone")
+            )
         )
     )
 )
@@ -134,35 +141,40 @@ server <- function(input, output, session) {
         data
     })
     
-#    output$plotnone <- renderPlot({
-#        #Data Type String
-#        if (input$information == "X") {
-#            datatype <- "Position"
-#        } else if (input$information == "V") {
-#            datatype <- "Velocity"
-#        } else if (input$information == "Q") {
-#            datatype <- "Quaternion"
-#        } else if (input$information == "A") {
-#            datatype <- "Acceleration"
-#        } else {
-#            datatype <- "Gyro"    
-#        }
-#        
-#        #Plot none
-#        ggplot(data = data.frame()) + 
-#            geom_line()  + 
-#            theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 20),
-#                  axis.title.x = element_text(face = "bold", size = 14),
-#                  axis.title.y = element_text(face = "bold", size = 14),
-#                  legend.position = "right",
-#                  legend.title = element_text(face = "bold", size = 12),
-#                  legend.text = element_text(size = 10)) + 
-#            labs(title=input$title,
-#                 y = datatype,
-#                 x = "Index") +
-#            ylim(-1,1) + 
-#            xlim(0,1000)  
-#    })
+    output$fileUploaded <- reactive({
+        return(!is.null(dataInput()))
+    })
+    outputOptions(output, 'fileUploaded', suspendWhenHidden=FALSE)
+    
+    output$plotnone <- renderPlot({
+        #Data Type String
+        if (input$information == "X") {
+            datatype <- "Position"
+        } else if (input$information == "V") {
+            datatype <- "Velocity"
+        } else if (input$information == "Q") {
+            datatype <- "Quaternion"
+        } else if (input$information == "A") {
+            datatype <- "Acceleration"
+        } else {
+            datatype <- "Gyro"    
+        }
+        
+        #Plot none
+        ggplot(data = data.frame()) + 
+            geom_line()  + 
+            theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 20),
+                  axis.title.x = element_text(face = "bold", size = 14),
+                  axis.title.y = element_text(face = "bold", size = 14),
+                  legend.position = "right",
+                  legend.title = element_text(face = "bold", size = 12),
+                  legend.text = element_text(size = 10)) + 
+            labs(title="No Data",
+                 y = datatype,
+                 x = "Index") +
+            ylim(input$yaxis[1],input$yaxis[2]) + 
+            xlim(input$xaxis[1],input$xaxis[2])
+    })
     
     output$plot <- renderPlot({
         
@@ -216,17 +228,25 @@ server <- function(input, output, session) {
                                       "Axis" = rep(axisnames[axes],length(part))))
         }
         
+        indices <- vector()
+        for (axes in 0:(numberAxes-1)) {
+            axesIndexStart <- input$xaxis[1]+axes*dim(dataf)[1]/numberAxes
+            axesIndexEnd <- input$xaxis[2]+axes*dim(dataf)[1]/numberAxes
+            indices <- c(indices,c(axesIndexStart:axesIndexEnd))
+        }
+        plotData <- dataf[indices,]
+        
         observe({
-            XmaxVal <- dim(data)[1]
+            XmaxVal <- length(index)
             updateSliderInput(session, "xaxis", min = 1, max = XmaxVal, 
                               step = 1)
-            YminVal <- tenPercRound(dataf[input$xaxis[1]:input$xaxis[2],2],'min')
-            YmaxVal <- tenPercRound(dataf[input$xaxis[1]:input$xaxis[2],2],'max')
-            updateSliderInput(session, "yaxis", min = YminVal, max = YmaxVal, 
+            YminVal <- tenPercRound(plotData$Part,'min')
+            YmaxVal <- tenPercRound(plotData$Part,'max')
+            updateSliderInput(session, "yaxis", min = YminVal, max = YmaxVal,
                               step = (YmaxVal-YminVal)/100)
         })
         
-        ggplot(data = dataf, aes(x=Index, y=Part, color=Axis)) + 
+        ggplot(data = plotData, aes(x=Index, y=Part, color=Axis)) + 
             geom_line()  + 
             theme(plot.title = element_text(hjust = 0.5, face = "bold",size = 20),
                   axis.title.x = element_text(face = "bold", size = 14),

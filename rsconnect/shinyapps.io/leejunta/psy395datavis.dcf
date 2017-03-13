@@ -3,8 +3,8 @@ title: PSY395datavis
 account: leejunta
 server: shinyapps.io
 appId: 161012
-bundleId: 732832
+bundleId: 732900
 url: https://leejunta.shinyapps.io/psy395datavis/
-when: 1488557467.30381
+when: 1488560041.78107
 asMultiple: FALSE
 asStatic: FALSE
