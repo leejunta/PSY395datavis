@@ -97,6 +97,10 @@ tenPercRound <- function(x,type) {
 }
 
 ui <- fluidPage(
+    tags$style(type="text/css",
+               ".shiny-output-error { visibility: hidden; }",
+               ".shiny-output-error:before { visibility: hidden; }"
+    ),
     titlePanel("Visualizing MoCap Data","MoCap Shiny"),
     sidebarLayout(
         sidebarPanel(
